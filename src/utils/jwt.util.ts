@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken";
 import { secret } from "../config/env.config.js";
 
-interface Payload {
+export interface Payload {
+    userId: string;
     fName: string;
     email: string;
     role: string;

@@ -46,6 +46,7 @@ export const register = async (
         const savedUser = await user.save();
 
         const payload = {
+            userId: user._id.toString(),
             fName: savedUser.fName,
             email: savedUser.email,
             role: savedUser.role,
@@ -57,6 +58,7 @@ export const register = async (
             success: true,
             message: "User created successfully",
             user: {
+                userId: savedUser._id,
                 fName: savedUser.fName,
                 lName: savedUser.lName,
                 avatar: savedUser.avatar,
@@ -97,6 +99,7 @@ export const login = async (
         }
 
         const payload = {
+            userId: user._id.toString(),
             fName: user.fName,
             email: user.email,
             role: user.role,
@@ -108,6 +111,7 @@ export const login = async (
             success: true,
             message: "User logged in successfully",
             user: {
+                userId: user._id,
                 fName: user.fName,
                 lName: user.lName,
                 avatar: user.avatar,
