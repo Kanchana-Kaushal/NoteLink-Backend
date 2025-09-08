@@ -17,13 +17,9 @@ const notesSchema = new mongoose.Schema(
 
             downloads: { type: Number, min: 0, default: 0 },
 
-            saves: [
-                { type: mongoose.Schema.ObjectId, unique: true, ref: "User" },
-            ],
+            saves: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
 
-            upvotes: [
-                { type: mongoose.Schema.ObjectId, unique: true, ref: "User" },
-            ],
+            upvotes: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
         },
 
         userId: { type: mongoose.Schema.ObjectId, ref: "User", required: true },

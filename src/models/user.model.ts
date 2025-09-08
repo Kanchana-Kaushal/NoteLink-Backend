@@ -35,9 +35,9 @@ const userSchema = new mongoose.Schema({
 
     bio: { type: String, maxLength: 200 },
 
-    followers: [{ type: mongoose.Schema.ObjectId, ref: "User", unique: true }],
+    followers: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
 
-    following: [{ type: mongoose.Schema.ObjectId, ref: "User", unique: true }],
+    following: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
 
     role: {
         type: String,
