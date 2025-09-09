@@ -17,8 +17,6 @@ const notesSchema = new mongoose.Schema(
 
             downloads: { type: Number, min: 0, default: 0 },
 
-            saves: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
-
             upvotes: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
         },
 

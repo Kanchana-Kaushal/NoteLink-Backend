@@ -3,6 +3,7 @@ import User from "../models/user.model.js";
 import HttpError from "../utils/HttpError.js";
 import { Payload } from "../utils/jwt.util.js";
 import mongoose from "mongoose";
+import Notes from "../models/note.model.js";
 
 export const getUserInfo = async (
     req: Request,
@@ -169,6 +170,72 @@ export const unfollow = async (
                 following: currentUser.following,
                 followers: userToUnfollow.followers,
             },
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const saveNote = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const tokenUser = req.user as Payload;
+    const userId = new mongoose.Types.ObjectId(tokenUser.userId);
+    const noteId = new mongoose.Types.ObjectId(req.params.noteId);
+
+    try {
+        const note = await Notes.findById(noteId);
+        if (!note) throw new HttpError("Note not found", 404);
+
+        const user = await User.findById(userId);
+        if (!user) throw new HttpError("User not found", 404);
+
+        // Already saved?
+        if (user.savedNotes.some((id) => id.equals(noteId))) {
+            throw new HttpError("You already saved this note", 400);
+        }
+
+        user.savedNotes.push(noteId);
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Note saved successfully",
+            savedNotes: user.savedNotes,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const unsaveNote = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const tokenUser = req.user as Payload;
+    const userId = new mongoose.Types.ObjectId(tokenUser.userId);
+    const noteId = new mongoose.Types.ObjectId(req.params.noteId);
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) throw new HttpError("User not found", 404);
+
+        // If not saved
+        if (!user.savedNotes.some((id) => id.equals(noteId))) {
+            throw new HttpError("You have not saved this note", 400);
+        }
+
+        user.savedNotes = user.savedNotes.filter((id) => !id.equals(noteId));
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Note unsaved successfully",
+            savedNotes: user.savedNotes,
         });
     } catch (err) {
         next(err);
