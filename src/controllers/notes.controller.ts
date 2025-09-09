@@ -4,18 +4,8 @@ import HttpError from "../utils/HttpError.js";
 import User from "../models/user.model.js";
 import Notes from "../models/note.model.js";
 
-interface NoteBody {
-    course: string;
-    title: string;
-    subTitle: string | undefined | null;
-    url: string;
-    description: string | undefined | null;
-    university?: string | undefined | null;
-    userId: string;
-}
-
 export const uploadNote = async (
-    req: Request<{}, {}, NoteBody>,
+    req: Request,
     res: Response,
     next: NextFunction
 ) => {
@@ -87,6 +77,51 @@ export const deletNote = async (
             success: true,
             message: "Note deleted successfully",
             deleted,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateNote = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const noteId = req.params.noteId;
+    const user = req.user as Payload;
+    const updateFields = req.body;
+
+    const course = updateFields.course;
+    const title = updateFields.title;
+    const subTitle = updateFields.subtitile;
+    const url = updateFields.url;
+    const description = updateFields.description;
+    const university = updateFields.university;
+
+    try {
+        const note = await Notes.findOne({ _id: noteId, userId: user.userId });
+
+        if (!note) {
+            throw new HttpError("Cannot find note", 404);
+        }
+
+        const updated = await Notes.updateOne(
+            { _id: noteId },
+            {
+                course,
+                title,
+                subTitle,
+                url,
+                description,
+                metaData: { university },
+            }
+        );
+
+        res.json({
+            success: true,
+            message: "Note updated successfully",
+            updated,
         });
     } catch (err) {
         next(err);
