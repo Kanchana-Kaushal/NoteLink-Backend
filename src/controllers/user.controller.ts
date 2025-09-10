@@ -4,6 +4,7 @@ import HttpError from "../utils/HttpError.js";
 import { Payload } from "../utils/jwt.util.js";
 import mongoose from "mongoose";
 import Notes from "../models/note.model.js";
+import Reports from "../models/reports.model.js";
 
 export const getUserInfo = async (
     req: Request,
@@ -236,6 +237,50 @@ export const unsaveNote = async (
             success: true,
             message: "Note unsaved successfully",
             savedNotes: user.savedNotes,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const submitReport = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const authUser = req.user as Payload;
+    const { noteId, reason } = req.body as {
+        noteId: string;
+        reason: string;
+    };
+
+    try {
+        const user = await User.findById(authUser.userId);
+        if (!user) throw new HttpError("User not found", 404);
+
+        const note = await Notes.findById(noteId);
+        if (!note) throw new HttpError("Note not found", 404);
+
+        const existingReport = await Reports.findOne({
+            userId: user._id,
+            noteId,
+        });
+        if (existingReport) {
+            throw new HttpError("You have already reported this note", 400);
+        }
+
+        const report = new Reports({
+            userId: user._id,
+            noteId,
+            reason,
+        });
+
+        await report.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Report submitted successfully",
+            report,
         });
     } catch (err) {
         next(err);

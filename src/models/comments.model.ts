@@ -20,6 +20,8 @@ const commentsSchema = new mongoose.Schema(
         },
 
         likes: [{ type: mongoose.Schema.ObjectId }],
+
+        hidden: { type: Boolean, default: false },
     },
     { timestamps: true }
 );

@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     follow,
     getUserInfo,
+    submitReport,
     unfollow,
     updateProfile,
 } from "../controllers/user.controller.js";
@@ -16,5 +17,7 @@ userRouter.put("/user/update", verifyUser, updateProfile);
 userRouter.post("/user/follow/:followingUserId", verifyUser, follow);
 
 userRouter.post("/user/unfollow/:unfollowUserId", verifyUser, unfollow);
+
+userRouter.post("/user/report-note", verifyUser, submitReport);
 
 export default userRouter;

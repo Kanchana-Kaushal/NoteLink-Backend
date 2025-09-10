@@ -11,7 +11,7 @@ const reportsSchema = new mongoose.Schema(
         },
 
         reason: {
-            type: mongoose.Schema.ObjectId,
+            type: String,
             required: true,
             minLength: 8,
             maxLength: 1000,
