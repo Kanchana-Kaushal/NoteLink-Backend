@@ -7,3 +7,7 @@ export const connString =
 export const PORT = process.env.PORT || 5000;
 
 export const secret = process.env.SECRET as string;
+
+export const myGmail = process.env.EMAIL;
+
+export const appPassword = process.env.APP_PW;

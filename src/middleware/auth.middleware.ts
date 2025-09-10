@@ -3,6 +3,8 @@ import HttpError from "../utils/HttpError.js";
 import jwt from "jsonwebtoken";
 import { secret } from "../config/env.config.js";
 import { Payload } from "../utils/jwt.util.js";
+import OTP from "../models/otp.model.js";
+import argon2 from "argon2";
 
 export const authenticate = async (
     req: Request,
@@ -56,6 +58,33 @@ export const verifyAdmin = async (
             throw new HttpError("User unauthorized", 401);
         }
 
+        next();
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const verifyOTP = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const { email, code } = req.body;
+
+    try {
+        const otpInfo = await OTP.findOne({ email: email });
+
+        if (!otpInfo)
+            throw new HttpError(
+                "Your code is expired, try sending a new one",
+                400
+            );
+
+        const isCodeCorrect = await argon2.verify(otpInfo.code, code);
+
+        if (!isCodeCorrect) throw new HttpError("Invalid Code", 401);
+
+        await OTP.deleteMany({ email });
         next();
     } catch (err) {
         next(err);

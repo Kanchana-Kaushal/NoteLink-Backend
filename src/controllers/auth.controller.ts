@@ -1,8 +1,11 @@
-import { Request, Response, NextFunction } from "express";
+import e, { Request, Response, NextFunction } from "express";
 import User from "../models/user.model.js";
 import HttpError from "../utils/HttpError.js";
 import argon2, { argon2id } from "argon2";
-import { generateToken } from "../utils/jwt.util.js";
+import { generateToken, Payload } from "../utils/jwt.util.js";
+import nodemailer from "nodemailer";
+import { appPassword, myGmail } from "../config/env.config.js";
+import OTP from "../models/otp.model.js";
 
 interface RegisterBody {
     fName: string;
@@ -140,6 +143,103 @@ export const checkAdmin = async (
         res.status(200).json({
             success: true,
             admin: user.role === "admin", // assuming you have isAdmin field in User schema
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const requestOTP = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const email = req.params.email;
+    const randomNumber = Math.floor(1000 + Math.random() * 9000);
+
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: myGmail,
+            pass: appPassword,
+        },
+    });
+
+    try {
+        if (!email) throw new HttpError("Email is required", 400);
+
+        await OTP.deleteMany({ email });
+
+        const hashedOTP = await argon2.hash(randomNumber.toString(), {
+            type: argon2id,
+        });
+
+        const code = await OTP.create({
+            email,
+            code: hashedOTP,
+        });
+
+        const message = {
+            from: myGmail,
+            sender: "Notelink",
+            to: code.email,
+            subject: `Your Verification Code`,
+            text: `Your verification code is ${randomNumber}`,
+            html: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background-color: #f9f9f9;">
+        <h2 style="text-align: center; color: #333;">Your Verification Code</h2>
+        <p style="font-size: 16px; color: #555;">
+            Hello,
+        </p>
+        <p style="font-size: 16px; color: #555;">
+            Use the following verification code to complete your action:
+        </p>
+        <p style="text-align: center; font-size: 28px; font-weight: bold; color: #1a73e8; margin: 20px 0;">
+            ${randomNumber}
+        </p>
+        <p style="font-size: 14px; color: #999;">
+            This code will expire in 10 minutes. If you did not request this, please ignore this email.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #999; text-align: center;">
+            &copy; 2025 NoteLink. All rights reserved.
+        </p>
+    </div>
+    `,
+        };
+
+        await transporter.sendMail(message);
+
+        res.status(250).json({
+            success: true,
+            message: "Verification code sent successfully",
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const resetPassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const { email, newPassword } = req.body;
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) throw new HttpError("User not found", 404);
+
+        const hashedPassword = await argon2.hash(newPassword, {
+            type: argon2id,
+        });
+
+        user.password = hashedPassword;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Password changed successfully",
         });
     } catch (err) {
         next(err);

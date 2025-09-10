@@ -286,3 +286,37 @@ export const submitReport = async (
         next(err);
     }
 };
+
+export const changeEmail = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const tokenUser = req.user as Payload;
+    const { newEmail } = req.body;
+
+    try {
+        if (!newEmail) throw new HttpError("New email is required", 400);
+
+        // check if email already taken
+        const existing = await User.findOne({ email: newEmail });
+        if (existing) throw new HttpError("Email already in use", 400);
+
+        // update user email
+        const user = await User.findByIdAndUpdate(
+            tokenUser.userId,
+            { email: newEmail },
+            { new: true, runValidators: true }
+        ).select("-password -__v");
+
+        if (!user) throw new HttpError("User not found", 404);
+
+        res.json({
+            success: true,
+            message: "Email updated successfully",
+            user,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
