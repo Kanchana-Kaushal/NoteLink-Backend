@@ -126,3 +126,22 @@ export const login = async (
         next(err);
     }
 };
+
+export const checkAdmin = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const user = await User.findById(req.user?.userId);
+
+        if (!user) throw new HttpError("User not found", 404);
+
+        res.status(200).json({
+            success: true,
+            admin: user.role === "admin", // assuming you have isAdmin field in User schema
+        });
+    } catch (err) {
+        next(err);
+    }
+};

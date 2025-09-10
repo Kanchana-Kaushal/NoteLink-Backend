@@ -137,7 +137,6 @@ export const upvoteNote = async (
         // Ensure metaData is initialized
         note.metaData = note.metaData ?? {
             downloads: 0,
-            saves: [],
             upvotes: [],
         };
 
@@ -173,11 +172,8 @@ export const removeUpvote = async (
 
         if (!note) throw new HttpError("Note not found", 404);
 
-        note.metaData = note.metaData ?? {
-            downloads: 0,
-            saves: [],
-            upvotes: [],
-        };
+        // ensure metaData exists
+        note.metaData = note.metaData ?? { downloads: 0, upvotes: [] };
 
         // If not upvoted
         if (!note.metaData.upvotes.some((id) => id.equals(userId))) {
@@ -194,6 +190,36 @@ export const removeUpvote = async (
             message: "Upvote removed successfully",
             upvotesCount: note.metaData.upvotes.length,
             upvotes: note.metaData.upvotes,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const downloadNote = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const noteId = new mongoose.Types.ObjectId(req.params.noteId);
+
+    try {
+        const note = await Notes.findById(noteId);
+        if (!note) throw new HttpError("Note not found", 404);
+
+        // ensure metaData exists
+        note.metaData = note.metaData ?? { downloads: 0, upvotes: [] };
+
+        // increment downloads
+        note.metaData.downloads = (note.metaData.downloads ?? 0) + 1;
+        await note.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Download recorded successfully",
+            downloads: note.metaData.downloads,
+            noteId: note._id,
+            url: note.url,
         });
     } catch (err) {
         next(err);

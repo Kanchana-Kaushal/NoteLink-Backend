@@ -2,6 +2,7 @@ import { Router } from "express";
 import { verifyUser } from "../middleware/auth.middleware.js";
 import {
     deletNote,
+    downloadNote,
     removeUpvote,
     updateNote,
     uploadNote,
@@ -24,5 +25,7 @@ notesRouter.post("/remove-upvote/:noteId", verifyUser, removeUpvote);
 notesRouter.post("/save/:noteId", verifyUser, saveNote);
 
 notesRouter.post("/unsave/:noteId", verifyUser, unsaveNote);
+
+notesRouter.get("/download/:noteId", verifyUser, downloadNote); //rate-limter required. 1h cooldown
 
 export default notesRouter;
