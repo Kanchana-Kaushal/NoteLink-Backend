@@ -2,16 +2,23 @@ import { Router } from "express";
 import {
     changeEmail,
     follow,
+    getAllUsers,
     getUserInfo,
     submitReport,
     unfollow,
     updateProfile,
 } from "../controllers/user.controller.js";
-import { verifyOTP, verifyUser } from "../middleware/auth.middleware.js";
+import {
+    verifyAdmin,
+    verifyOTP,
+    verifyUser,
+} from "../middleware/auth.middleware.js";
 
 const userRouter = Router();
 
 userRouter.get("/user/profile/:userId", verifyUser, getUserInfo);
+
+userRouter.get("/", verifyAdmin, getAllUsers);
 
 userRouter.put("/user/update", verifyUser, updateProfile);
 

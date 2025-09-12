@@ -4,6 +4,7 @@ import {
     deletNote,
     downloadNote,
     removeUpvote,
+    searchNotes,
     updateNote,
     uploadNote,
     upvoteNote,
@@ -27,5 +28,7 @@ notesRouter.post("/save/:noteId", verifyUser, saveNote);
 notesRouter.post("/unsave/:noteId", verifyUser, unsaveNote);
 
 notesRouter.get("/download/:noteId", verifyUser, downloadNote); //rate-limter required. 1h cooldown
+
+notesRouter.get("/search", verifyUser, searchNotes); // GET /api/notes/search?query=sdLC&sortBy=downloads&sortOrder=desc&page=2&limit=10
 
 export default notesRouter;

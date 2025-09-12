@@ -10,7 +10,7 @@ export const uploadNote = async (
     res: Response,
     next: NextFunction
 ) => {
-    const { course, title, subTitle, url, description, university } = req.body;
+    const { course, title, subject, url, description, university } = req.body;
 
     const tokenInfo = req.user as Payload;
 
@@ -22,7 +22,7 @@ export const uploadNote = async (
         const note = new Notes({
             course,
             title,
-            subTitle,
+            subject,
             url,
             description,
             metaData: { university: university },
@@ -88,10 +88,10 @@ export const updateNote = async (
 
     const course = updateFields.course;
     const title = updateFields.title;
-    const subTitle = updateFields.subtitile;
     const url = updateFields.url;
     const description = updateFields.description;
     const university = updateFields.university;
+    const subject = updateFields.subject;
 
     try {
         const note = await Notes.findOne({ _id: noteId, userId: user.userId });
@@ -103,7 +103,7 @@ export const updateNote = async (
             {
                 course,
                 title,
-                subTitle,
+                subject,
                 url,
                 description,
                 metaData: { university },
@@ -220,6 +220,127 @@ export const downloadNote = async (
             downloads: note.metaData.downloads,
             noteId: note._id,
             url: note.url,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const searchNotes = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const { query, page = "1", limit = "10" } = req.query;
+    const sortBy = (req.query.sortBy as string) || "relevance";
+    const sortOrder = (req.query.sortOrder as string) || "desc";
+    const university = (req.user as Payload)?.university || null;
+
+    try {
+        if (!query || typeof query !== "string" || query.length < 2) {
+            throw new HttpError("A valid query required", 400);
+        }
+
+        const pageNum = Math.max(parseInt(page as string, 10), 1);
+        const limitNum = Math.min(
+            Math.max(parseInt(limit as string, 10), 1),
+            20
+        );
+
+        const notes = await Notes.aggregate([
+            // Stage 1: match search + visibility
+            { $match: { $text: { $search: query }, hidden: false } },
+
+            // Stage 2: add computed fields
+            {
+                $addFields: {
+                    score: { $meta: "textScore" },
+                    sameUni: {
+                        $cond: [
+                            { $eq: ["$metaData.university", university] },
+                            1,
+                            0,
+                        ],
+                    },
+                    upvotesCount: {
+                        $size: { $ifNull: ["$metaData.upvotes", []] },
+                    },
+                    downloadsCount: {
+                        $ifNull: ["$metaData.downloads", 0],
+                    },
+                },
+            },
+
+            // Stage 3: ranking formula
+            {
+                $addFields: {
+                    rank: {
+                        $add: [
+                            { $multiply: ["$score", 3] }, // text relevance
+                            { $multiply: ["$sameUni", 2] }, // same uni boost
+                            {
+                                $cond: [
+                                    { $gt: ["$downloadsCount", 0] },
+                                    { $log: [10, "$downloadsCount"] },
+                                    0,
+                                ],
+                            },
+                            { $multiply: ["$upvotesCount", 0.5] }, // weighted upvotes
+                        ],
+                    },
+                },
+            },
+
+            // Stage 4: sorting
+            {
+                $sort:
+                    sortBy === "date"
+                        ? { createdAt: sortOrder === "asc" ? 1 : -1 }
+                        : sortBy === "downloads"
+                        ? { downloadsCount: sortOrder === "asc" ? 1 : -1 }
+                        : sortBy === "upvotes"
+                        ? { upvotesCount: sortOrder === "asc" ? 1 : -1 }
+                        : { rank: -1, createdAt: -1 }, // default = relevance
+            },
+
+            // Stage 5: join user details
+            {
+                $lookup: {
+                    from: "users", // collection name in MongoDB
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "author",
+                },
+            },
+            { $unwind: "$author" },
+
+            // Stage 6: pagination
+            { $skip: (pageNum - 1) * limitNum },
+            { $limit: limitNum },
+
+            // Stage 7: shape output
+            {
+                $project: {
+                    course: 1,
+                    title: 1,
+                    subject: 1,
+                    metaData: 1,
+                    rank: 1,
+                    createdAt: 1,
+                    "author.fName": 1,
+                    "author.lName": 1,
+                    "author.avatar": 1,
+                },
+            },
+        ]);
+
+        res.json({
+            success: true,
+            message: "Notes fetched successfully",
+            page: pageNum,
+            limit: limitNum,
+            count: notes.length,
+            notes,
         });
     } catch (err) {
         next(err);

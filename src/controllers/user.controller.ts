@@ -37,6 +37,25 @@ export const getUserInfo = async (
     }
 };
 
+export const getAllUsers = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const users = await User.find().select("-password -__v");
+
+        res.json({
+            success: true,
+            message: "Users fetched successfully",
+            count: users.length,
+            users,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const updateProfile = async (
     req: Request,
     res: Response,

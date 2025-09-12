@@ -50,7 +50,7 @@ export const register = async (
 
         const payload = {
             userId: user._id.toString(),
-            fName: savedUser.fName,
+            university: savedUser.university,
             email: savedUser.email,
             role: savedUser.role,
         };
@@ -103,7 +103,7 @@ export const login = async (
 
         const payload = {
             userId: user._id.toString(),
-            fName: user.fName,
+            university: user.university,
             email: user.email,
             role: user.role,
         };

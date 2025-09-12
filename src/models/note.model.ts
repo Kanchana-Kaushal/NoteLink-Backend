@@ -6,7 +6,7 @@ const notesSchema = new mongoose.Schema(
 
         title: { type: String, minLength: 2, maxLength: 100, required: true },
 
-        subTitle: { type: String, minLength: 2, maxLength: 150 },
+        subject: { type: String, minLength: 2, maxLength: 150 },
 
         url: { type: String, required: true, trim: true },
 
@@ -23,9 +23,21 @@ const notesSchema = new mongoose.Schema(
         userId: { type: mongoose.Schema.ObjectId, ref: "User", required: true },
 
         hidden: { type: Boolean, default: false, required: true },
+
+        keywords: [{ type: String }],
     },
     { timestamps: true }
 );
+
+notesSchema.index({
+    course: "text",
+    title: "text",
+    subTitle: "text",
+    subject: "text",
+    description: "text",
+    "metaData.university": "text",
+    keywords: "text",
+});
 
 const Notes = mongoose.model("Notes", notesSchema);
 export default Notes;

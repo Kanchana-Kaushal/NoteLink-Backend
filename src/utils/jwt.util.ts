@@ -3,7 +3,7 @@ import { secret } from "../config/env.config.js";
 
 export interface Payload {
     userId: string;
-    fName: string;
+    university: string | null | undefined;
     email: string;
     role: string;
 }
