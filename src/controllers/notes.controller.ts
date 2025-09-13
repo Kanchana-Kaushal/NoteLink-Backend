@@ -346,3 +346,243 @@ export const searchNotes = async (
         next(err);
     }
 };
+
+export const loadHomePage = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const tokenUser = req.user as Payload;
+    const page = Math.max(parseInt(req.query.page as string, 10) || 1, 1);
+    const limit = 20;
+
+    try {
+        const user = await User.findById(tokenUser.userId);
+
+        if (!user) throw new HttpError("User not found", 404);
+
+        const courseRegex = buildCourseRegex(user.degree || "");
+
+        // -------------------
+        // Suggested Notes
+        // -------------------
+        let notes = await Notes.aggregate([
+            {
+                $match: {
+                    hidden: false,
+                    ...(courseRegex ? { course: { $regex: courseRegex } } : {}),
+                },
+            },
+            {
+                $addFields: {
+                    downloadsCount: { $ifNull: ["$metaData.downloads", 0] },
+                    upvotesCount: {
+                        $size: { $ifNull: ["$metaData.upvotes", []] },
+                    },
+                    followBoost: {
+                        $cond: [{ $in: ["$userId", user.following] }, 2, 0],
+                    },
+                    sameUniversityBoost: {
+                        $cond: [
+                            { $eq: ["$metaData.university", user.university] },
+                            1,
+                            0,
+                        ],
+                    },
+                },
+            },
+            {
+                $addFields: {
+                    rank: {
+                        $add: [
+                            { $multiply: ["$downloadsCount", 0.1] },
+                            { $multiply: ["$upvotesCount", 0.2] },
+                            "$followBoost",
+                            { $multiply: ["$sameUniversityBoost", 1] },
+                        ],
+                    },
+                },
+            },
+            { $sort: { rank: -1, createdAt: -1 } },
+            { $skip: (page - 1) * limit },
+            { $limit: limit },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "author",
+                },
+            },
+            { $unwind: "$author" },
+            {
+                $project: {
+                    title: 1,
+                    subject: 1,
+                    createdAt: 1,
+                    metaData: 1,
+                    rank: 1,
+                    author: {
+                        _id: "$author._id",
+                        fName: "$author.fName",
+                        lName: "$author.lName",
+                        avatar: "$author.avatar",
+                    },
+                },
+            },
+        ]);
+
+        // -------------------
+        // Fallback Notes (if <5)
+        // -------------------
+        if (notes.length < 5) {
+            // Collect IDs of notes we already have
+            const existingIds = notes.map((n) => n._id);
+
+            // Get additional notes to fill up to 20
+            const fallbackNotes = await Notes.aggregate([
+                {
+                    $match: {
+                        hidden: false,
+                        _id: { $nin: existingIds },
+                    },
+                },
+                {
+                    $addFields: {
+                        downloadsCount: { $ifNull: ["$metaData.downloads", 0] },
+                        upvotesCount: {
+                            $size: { $ifNull: ["$metaData.upvotes", []] },
+                        },
+                        followBoost: {
+                            $cond: [{ $in: ["$userId", user.following] }, 2, 0],
+                        },
+                        sameUniversityBoost: {
+                            $cond: [
+                                {
+                                    $eq: [
+                                        "$metaData.university",
+                                        user.university,
+                                    ],
+                                },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                },
+                {
+                    $addFields: {
+                        rank: {
+                            $add: [
+                                { $multiply: ["$downloadsCount", 0.1] },
+                                { $multiply: ["$upvotesCount", 0.2] },
+                                "$followBoost",
+                                { $multiply: ["$sameUniversityBoost", 1] },
+                            ],
+                        },
+                    },
+                },
+                { $sort: { sameUniversityBoost: -1, rank: -1, createdAt: -1 } }, // same university first
+                { $limit: limit - notes.length },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "userId",
+                        foreignField: "_id",
+                        as: "author",
+                    },
+                },
+                { $unwind: "$author" },
+                {
+                    $project: {
+                        title: 1,
+                        subject: 1,
+                        url: 1,
+                        createdAt: 1,
+                        metaData: 1,
+                        rank: 1,
+                        author: {
+                            _id: "$author._id",
+                            fName: "$author.fName",
+                            lName: "$author.lName",
+                            avatar: "$author.avatar",
+                        },
+                    },
+                },
+            ]);
+
+            notes = [...notes, ...fallbackNotes];
+        }
+
+        // -------------------
+        // Suggested Users
+        // -------------------
+        const suggestedUsers = await User.find({
+            $and: [
+                { _id: { $ne: user._id } },
+                { _id: { $nin: user.following } },
+            ],
+            banned: false,
+            active: true,
+            $or: [
+                { university: user.university },
+                ...(courseRegex ? [{ degree: { $regex: courseRegex } }] : []),
+            ],
+            notes: { $exists: true, $not: { $size: 0 } },
+        })
+            .sort({ totalDownloads: -1 })
+            .limit(15)
+            .select("fName lName avatar university degree totalDownloads");
+
+        res.json({
+            success: true,
+            page,
+            limit,
+            notesCount: notes.length,
+            notes,
+            suggestedUsers,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+function buildCourseRegex(course?: string): RegExp | undefined {
+    if (!course) return undefined;
+
+    // Expanded ignore words list (add more if needed later)
+    const ignoreWords = [
+        "bsc",
+        "msc",
+        "ba",
+        "ma",
+        "beng",
+        "meng",
+        "phd",
+        "doctorate",
+        "diploma",
+        "certificate",
+        "associate",
+        "foundation",
+        "degree",
+        "bachelor",
+        "master",
+        "honours",
+        "hons",
+        "of",
+        "in",
+    ];
+
+    const parts = course
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => !ignoreWords.includes(w));
+
+    if (!parts.length) return undefined;
+
+    // Create regex with word boundaries, flexible gaps allowed
+    // e.g. ["software", "engineering"] => /\bsoftware.*engineering\b/i
+    const pattern = "\\b" + parts.join(".*") + "\\b";
+
+    return new RegExp(pattern, "i");
+}

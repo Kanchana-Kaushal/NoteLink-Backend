@@ -3,6 +3,7 @@ import { verifyUser } from "../middleware/auth.middleware.js";
 import {
     deletNote,
     downloadNote,
+    loadHomePage,
     removeUpvote,
     searchNotes,
     updateNote,
@@ -30,5 +31,7 @@ notesRouter.post("/unsave/:noteId", verifyUser, unsaveNote);
 notesRouter.get("/download/:noteId", verifyUser, downloadNote); //rate-limter required. 1h cooldown
 
 notesRouter.get("/search", verifyUser, searchNotes); // GET /api/notes/search?query=sdLC&sortBy=downloads&sortOrder=desc&page=2&limit=10
+
+notesRouter.get("/home-page", verifyUser, loadHomePage); // GET /api/notes/home-page?page=1
 
 export default notesRouter;
