@@ -4,6 +4,7 @@ import HttpError from "../utils/HttpError.js";
 import User from "../models/user.model.js";
 import Notes from "../models/note.model.js";
 import mongoose from "mongoose";
+import Comments from "../models/comments.model.js";
 
 export const uploadNote = async (
     req: Request,
@@ -36,6 +37,50 @@ export const uploadNote = async (
         res.json({
             success: true,
             message: "Note uploaded successfully",
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getNoteInfo = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const { noteId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(noteId)) {
+        return next(new HttpError("Invalid note ID", 400));
+    }
+
+    try {
+        const note = await Notes.findById(noteId)
+            .populate({
+                path: "userId",
+                model: User,
+                select: "_id fName lName avatar university degree",
+            })
+            .lean();
+
+        if (!note || note.hidden) {
+            throw new HttpError("Note not found", 404);
+        }
+
+        const comments = await Comments.find({ noteId, hidden: false })
+            .populate({
+                path: "userId",
+                model: User,
+                select: "_id fName lName avatar",
+            })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.json({
+            success: true,
+            message: "Note info fetched successfully",
+            note,
+            comments,
         });
     } catch (err) {
         next(err);

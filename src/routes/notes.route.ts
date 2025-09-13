@@ -3,6 +3,7 @@ import { verifyUser } from "../middleware/auth.middleware.js";
 import {
     deletNote,
     downloadNote,
+    getNoteInfo,
     loadHomePage,
     removeUpvote,
     searchNotes,
@@ -13,6 +14,8 @@ import {
 import { saveNote, unsaveNote } from "../controllers/user.controller.js";
 
 const notesRouter = Router();
+
+notesRouter.get("/get-note/:noteId", verifyUser, getNoteInfo);
 
 notesRouter.post("/upload", verifyUser, uploadNote);
 
