@@ -27,8 +27,7 @@ export const register = async (
     res: Response,
     next: NextFunction
 ) => {
-    const { fName, lName, email, avatar, password, university, degree } =
-        req.body;
+    const { fName, lName, email, password, university, degree } = req.body;
 
     try {
         const userExists = await User.findOne({ email });
@@ -40,7 +39,6 @@ export const register = async (
             fName: fName,
             lName: lName,
             email: email,
-            avatar: avatar,
             password: hashedPassword,
             university: university,
             degree: degree,
@@ -95,7 +93,7 @@ export const login = async (
             throw new HttpError("User is banned from the platform", 403);
         }
 
-        const isPasswordCorrect = argon2.verify(user.password, password);
+        const isPasswordCorrect = await argon2.verify(user.password, password);
 
         if (!isPasswordCorrect) {
             throw new HttpError("Password does not match", 401);

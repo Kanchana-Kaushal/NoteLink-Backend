@@ -71,6 +71,8 @@ export const verifyOTP = async (
 ) => {
     const { email, code } = req.body;
 
+    console.log(code);
+
     try {
         const otpInfo = await OTP.findOne({ email: email });
 

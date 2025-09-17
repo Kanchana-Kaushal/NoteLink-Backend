@@ -9,10 +9,14 @@ import notesRouter from "./routes/notes.route.js";
 import commnetsRouter from "./routes/comments.route.js";
 import adminRouter from "./routes/admin.route.js";
 import { authenticate } from "./middleware/auth.middleware.js";
+import cors from "cors";
+import morgan from "morgan";
 
 const app = express();
 
 //Middleware
+app.use(cors());
+app.use(morgan("tiny"));
 app.use(authenticate);
 app.use(express.json());
 

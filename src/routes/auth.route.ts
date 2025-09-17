@@ -10,7 +10,7 @@ import { verifyOTP, verifyUser } from "../middleware/auth.middleware.js";
 
 const authRouter = Router();
 
-authRouter.post("/register", /* verifyOTP, */ register);
+authRouter.post("/register", verifyOTP, register);
 
 authRouter.post("/login", login);
 
