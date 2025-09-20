@@ -461,12 +461,33 @@ export const loadHomePage = async (
             },
             { $unwind: "$author" },
             {
+                $lookup: {
+                    from: "comments",
+                    localField: "_id",
+                    foreignField: "noteId",
+                    as: "comments",
+                    pipeline: [
+                        {
+                            $match: {
+                                hidden: false,
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $addFields: {
+                    commentsCount: { $size: "$comments" },
+                },
+            },
+            {
                 $project: {
                     title: 1,
                     subject: 1,
                     createdAt: 1,
                     metaData: 1,
                     rank: 1,
+                    commentsCount: 1,
                     author: {
                         _id: "$author._id",
                         fName: "$author.fName",
@@ -527,7 +548,7 @@ export const loadHomePage = async (
                         },
                     },
                 },
-                { $sort: { sameUniversityBoost: -1, rank: -1, createdAt: -1 } }, // same university first
+                { $sort: { sameUniversityBoost: -1, rank: -1, createdAt: -1 } },
                 { $limit: limit - notes.length },
                 {
                     $lookup: {
@@ -539,6 +560,26 @@ export const loadHomePage = async (
                 },
                 { $unwind: "$author" },
                 {
+                    $lookup: {
+                        from: "comments",
+                        localField: "_id",
+                        foreignField: "noteId",
+                        as: "comments",
+                        pipeline: [
+                            {
+                                $match: {
+                                    hidden: false,
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    $addFields: {
+                        commentsCount: { $size: "$comments" },
+                    },
+                },
+                {
                     $project: {
                         title: 1,
                         subject: 1,
@@ -546,6 +587,7 @@ export const loadHomePage = async (
                         createdAt: 1,
                         metaData: 1,
                         rank: 1,
+                        commentsCount: 1,
                         author: {
                             _id: "$author._id",
                             fName: "$author.fName",
